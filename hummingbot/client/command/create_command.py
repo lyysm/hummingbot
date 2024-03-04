@@ -42,8 +42,10 @@ class OrderedDumper(yaml.SafeDumper):
 
 
 class CreateCommand:
-    def create(self,  # type: HummingbotApplication
-               script_to_config: Optional[str] = None,):
+    def create(
+        self,  # type: HummingbotApplication
+        script_to_config: Optional[str] = None,
+    ):
         self.app.clear_input()
         self.placeholder_mode = True
         self.app.hide_input = True
@@ -53,14 +55,22 @@ class CreateCommand:
         else:
             safe_ensure_future(self.prompt_for_configuration())
 
-    async def prompt_for_configuration_v2(self,  # type: HummingbotApplication
-                                          script_to_config: str):
+    async def prompt_for_configuration_v2(
+        self,  # type: HummingbotApplication
+        script_to_config: str,
+    ):
         try:
             module = sys.modules.get(f"{settings.SCRIPT_STRATEGIES_MODULE}.{script_to_config}")
             script_module = importlib.reload(module)
-            config_class = next((member for member_name, member in inspect.getmembers(script_module)
-                                 if inspect.isclass(member) and
-                                 issubclass(member, BaseClientModel) and member not in [BaseClientModel]))
+            config_class = next(
+                (
+                    member
+                    for member_name, member in inspect.getmembers(script_module)
+                    if inspect.isclass(member)
+                    and issubclass(member, BaseClientModel)
+                    and member not in [BaseClientModel]
+                )
+            )
             config_map = ClientConfigAdapter(config_class.construct())
 
             await self.prompt_for_model_config(config_map)
@@ -95,7 +105,7 @@ class CreateCommand:
         OrderedDumper.add_representer(OrderedDict, _dict_representer)
 
         # Write the configuration data to the YAML file
-        with open(strategy_path, 'w') as file:
+        with open(strategy_path, "w") as file:
             yaml.dump(ordered_config_data, file, Dumper=OrderedDumper, default_flow_style=False)
 
         return file_name
@@ -109,8 +119,10 @@ class CreateCommand:
             return
 
         config_map = get_strategy_config_map(strategy)
-        self.notify(f"Please see https://docs.hummingbot.org/strategies/{strategy.replace('_', '-')}/ "
-                    f"while setting up these below configuration.")
+        self.notify(
+            f"Please see https://docs.hummingbot.org/strategies/{strategy.replace('_', '-')}/ "
+            f"while setting up these below configuration."
+        )
 
         if isinstance(config_map, ClientConfigAdapter):
             await self.prompt_for_model_config(config_map)
@@ -152,10 +164,7 @@ class CreateCommand:
     ):
         for key in config_map.keys():
             client_data = config_map.get_client_data(key)
-            if (
-                client_data is not None
-                and (client_data.prompt_on_new or config_map.is_required(key))
-            ):
+            if client_data is not None and (client_data.prompt_on_new or config_map.is_required(key)):
                 await self.prompt_a_config(config_map, key)
                 if self.app.to_stop_config:
                     break
@@ -271,26 +280,28 @@ class CreateCommand:
         save_to_yml(strategy_path, config_map)
         return file_name
 
-    async def prompt_new_file_name(self,  # type: HummingbotApplication
-                                   strategy: str,
-                                   is_script: bool = False):
+    async def prompt_new_file_name(
+        self,  # type: HummingbotApplication
+        strategy: str,
+        is_script: bool = False,
+    ):
         file_name = default_strategy_file_path(strategy)
         self.app.set_text(file_name)
-        input = await self.app.prompt(prompt="Enter a new file name for your configuration >>> ")
+        input = await self.app.prompt(prompt="设置生成的配置文件名称 >>> ")
         input = format_config_file_name(input)
         conf_dir_path = STRATEGIES_CONF_DIR_PATH if not is_script else SCRIPT_STRATEGY_CONFIG_PATH
         file_path = os.path.join(conf_dir_path, input)
         if input is None or input == "":
-            self.notify("Value is required.")
+            self.notify("值是必需的。")
             return await self.prompt_new_file_name(strategy, is_script)
         elif os.path.exists(file_path):
-            self.notify(f"{input} file already exists, please enter a new name.")
+            self.notify(f"{input} 文件已存在，请输入新名称。")
             return await self.prompt_new_file_name(strategy, is_script)
         else:
             return input
 
     async def verify_status(
-        self  # type: HummingbotApplication
+        self,  # type: HummingbotApplication
     ):
         try:
             timeout = float(self.client_config_map.commands_timeout.create_command_timeout)
@@ -302,7 +313,7 @@ class CreateCommand:
             self.strategy_config = None
             raise
         if all_status_go:
-            self.notify("\nEnter \"start\" to start market making.")
+            self.notify('\nEnter "start" to start market making.')
 
     @staticmethod
     def restore_config_legacy(config_map: Dict[str, ConfigVar], config_map_backup: Dict[str, ConfigVar]):
